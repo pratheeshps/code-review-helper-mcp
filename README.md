@@ -91,7 +91,7 @@ The structure reflects the intended layout; optional folders may be absent if th
 Clone the repository:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/code-review-helper-mcp.git
+git clone <YOUR_GITHUB_REPOSITORY_URL>
 cd code-review-helper-mcp
 npm install
 ```
