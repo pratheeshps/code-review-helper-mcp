@@ -2,18 +2,20 @@ import { describe, it, expect } from "vitest";
 import { analyzeJavaScript } from "../src/tools/analyze-code.js";
 
 describe("analyzeJavaScript", () => {
-    it("returns no findings for clean code", () => {
+    it("returns 1 warning findings for clean code", () => {
         const result = analyzeJavaScript("const count = 10;");
 
-        expect(result.findingCount).toBe(0);
-        expect(result.findings).toEqual([]);
+        expect(result.findingCount).toBe(1);
+        expect(result.findings[0].message).toBe("'count' is assigned a value but never used.");;
     });
 
     it("detects var usage", () => {
         const result = analyzeJavaScript("var count = 10;");
 
-        expect(result.findings).toHaveLength(1);
-        expect(result.findings[0].rule).toBe("prefer-const-let");
+        expect(result.findings.map((finding) => finding.rule)).toEqual([
+            "no-var",
+            "no-unused-vars",
+        ]);
         expect(result.findings[0].line).toBe(1);
     });
 
@@ -21,7 +23,7 @@ describe("analyzeJavaScript", () => {
         const result = analyzeJavaScript("console.log('Hello');");
 
         expect(result.findings).toHaveLength(1);
-        expect(result.findings[0].rule).toBe("no-console-log");
+        expect(result.findings[0].rule).toBe("no-console");
     });
 
     it("detects debugger statements", () => {
@@ -42,11 +44,14 @@ describe("analyzeJavaScript", () => {
         const code = "const a = 1;\nvar b = 2;";
         const result = analyzeJavaScript(code);
 
-        expect(result.findings[0].line).toBe(2);
+        const varFinding = result.findings.find(
+            (finding) => finding.rule === "no-var",
+        );
+        expect(varFinding.line).toBe(2);
     });
 
     it("counts multiple findings on the same line", () => {
-        const result = analyzeJavaScript("eval(\"console.log('test')\");");
+        const result = analyzeJavaScript('console.log(eval("1 + 1"));');
 
         expect(result.findingCount).toBe(2);
     });
@@ -68,9 +73,9 @@ describe("analyzeJavaScript", () => {
 
         const result = analyzeJavaScript(code);
 
-        expect(result.findingCount).toBe(2);
-        expect(result.findings[0].line).toBe(2);
-        expect(result.findings[1].line).toBe(3);
+        expect(
+            result.findings.map((finding) => `${finding.line}:${finding.rule}`),
+        ).toEqual(["2:no-var", "2:no-unused-vars", "3:no-console"]);
     });
 
     it("does not execute submitted source code", () => {
@@ -80,5 +85,27 @@ describe("analyzeJavaScript", () => {
 
         expect(result.findingCount).toBe(1);
         expect(result.findings[0].rule).toBe("no-eval");
+    });
+
+    it("detects multiple issues on the same line", () => {
+        const result = analyzeJavaScript(
+            'var result = eval("1 + 1"); console.log(result);',
+        );
+
+        expect(result.findingCount).toBe(3);
+
+        expect(result.findings.map((finding) => finding.rule)).toEqual([
+            "no-var",
+            "no-eval",
+            "no-console",
+        ]);
+    });
+
+    it("detects undefined variables", () => {
+        const result = analyzeJavaScript("console.log(missingVariable);");
+
+        expect(
+            result.findings.some((finding) => finding.rule === "no-undef"),
+        ).toBe(true);
     });
 });

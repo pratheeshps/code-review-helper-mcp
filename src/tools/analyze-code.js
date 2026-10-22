@@ -1,56 +1,50 @@
 
+import { Linter } from "eslint";
+
+const linter = new Linter();
+
+const reviewConfig = [
+  {
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: {
+        console: "readonly",
+      },
+    },
+    rules: {
+      "no-unused-vars": "warn",
+      "no-undef": "error",
+      "no-var": "warn",
+      "no-console": "warn",
+      "no-debugger": "error",
+      "no-eval": "error",
+      "eqeqeq": "warn",
+    },
+  },
+];
+
 export function analyzeJavaScript(code) {
-  const findings = [];
-  const lines = code.split(/\r?\n/);
-
-  const rules = [
-    {
-      pattern: /\bvar\s+/,
-      severity: "warning",
-      message: "Consider using const or let instead of var.",
-      rule: "prefer-const-let",
-    },
-    {
-      pattern: /\bconsole\.log\s*\(/,
-      severity: "info",
-      message: "Check whether this debug log should remain in production.",
-      rule: "no-console-log",
-    },
-    {
-      pattern: /\bdebugger\s*;?/,
-      severity: "warning",
-      message: "Remove debugger statements before production.",
-      rule: "no-debugger",
-    },
-    {
-      pattern: /\beval\s*\(/,
-      severity: "warning",
-      message: "Avoid eval() when possible; it can execute unsafe code.",
-      rule: "no-eval",
-    },
-  ];
-
-  lines.forEach((line, index) => {
-    for (const rule of rules) {
-      if (rule.pattern.test(line)) {
-        findings.push({
-          line: index + 1,
-          severity: rule.severity,
-          rule: rule.rule,
-          message: rule.message,
-          code: line.trim(),
-        });
-      }
-    }
+  const messages = linter.verify(code, reviewConfig, {
+    filename: "snippet.js",
   });
+
+  const findings = messages.map((message) => ({
+    line: message.line ?? 1,
+    column: message.column ?? 1,
+    severity: message.severity === 2 ? "error" : "warning",
+    rule: message.ruleId ?? "parse-error",
+    message: message.message,
+    code: code.split(/\r?\n/)[(message.line ?? 1) - 1]?.trim() ?? "",
+  }));
 
   return {
     language: "javascript",
-    linesAnalyzed: lines.length,
+    linesAnalyzed: code.split(/\r?\n/).length,
     findingCount: findings.length,
+    errorCount: findings.filter((item) => item.severity === "error").length,
+    warningCount: findings.filter((item) => item.severity === "warning").length,
     findings,
-    note:
-      "These are heuristic checks, not a full parser. " +
-      "Matches in comments or strings may produce false positives.",
+    note: "Analysis uses ESLint rules. Review findings before treating them as confirmed bugs.",
   };
 }
