@@ -48,7 +48,7 @@ ESLint-based analyzer, and returns structured findings to the client.
 Clone the repository:
 
 ```bash
-git clone <YOUR_GITHUB_REPOSITORY_URL>
+git clone [<YOUR_GITHUB_REPOSITORY_URL>](https://github.com/pratheeshps/code-review-helper-mcp)
 cd code-review-helper-mcp
 npm install
 ```
