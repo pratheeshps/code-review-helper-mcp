@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { analyzeJavaScript } from "./tools/analyze-code.js";
+import { findTodos } from "./tools/find-todos.js";
 
 const server = new McpServer({
     name: "code-review-helper",
@@ -50,6 +51,37 @@ server.registerTool(
     },
     async ({ code }) => {
         const report = analyzeJavaScript(code);
+
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: JSON.stringify(report, null, 2),
+                },
+            ],
+        };
+    },
+);
+
+server.registerTool(
+    "find_todos",
+    {
+        title: "Find TODO Comments",
+        description:
+            "Finds TODO, FIXME, and HACK markers in JavaScript source code.",
+        inputSchema: {
+            code: z
+                .string()
+                .min(1, "Code cannot be empty.")
+                .max(20000, "Code must be 20,000 characters or fewer.")
+                .refine((value) => value.trim().length > 0, {
+                    message: "Code cannot contain only whitespace.",
+                })
+                .describe("JavaScript source code to scan."),
+        },
+    },
+    async ({ code }) => {
+        const report = findTodos(code);
 
         return {
             content: [
