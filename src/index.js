@@ -7,6 +7,7 @@ import { checkNamingConventions } from "./tools/check-naming.js";
 import { fetchGitHubFile } from "./tools/github-file.js";
 import { reviewCode } from "./tools/review-code.js";
 import { listGitHubFiles } from "./tools/list-github-files.js";
+import { reviewGitHubPullRequest } from "./tools/review-github-pr.js";
 
 const server = new McpServer({
     name: "code-review-helper",
@@ -232,53 +233,99 @@ server.registerTool(
     },
 );
 
-
 server.registerTool(
-  "list_github_files",
-  {
-    title: "List GitHub Repository Files",
-    description:
-      "List files and directories in a GitHub repository or directory. Use returned paths to select files for code review.",
-    inputSchema: {
-      owner: z.string().min(1).max(100),
-      repo: z.string().min(1).max(100),
-      path: z.string().max(500).optional(),
-      ref: z.string().min(1).max(200).optional(),
+    "list_github_files",
+    {
+        title: "List GitHub Repository Files",
+        description:
+            "List files and directories in a GitHub repository or directory. Use returned paths to select files for code review.",
+        inputSchema: {
+            owner: z.string().min(1).max(100),
+            repo: z.string().min(1).max(100),
+            path: z.string().max(500).optional(),
+            ref: z.string().min(1).max(200).optional(),
+        },
     },
-  },
-  async ({ owner, repo, path, ref }) => {
-    try {
-      const result = await listGitHubFiles({
-        owner,
-        repo,
-        path,
-        ref,
-      });
+    async ({ owner, repo, path, ref }) => {
+        try {
+            const result = await listGitHubFiles({
+                owner,
+                repo,
+                path,
+                ref,
+            });
 
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text",
-            text: `GitHub directory listing failed: ${
-              error instanceof Error ? error.message : "Unknown error"
-            }`,
-          },
-        ],
-      };
-    }
-  },
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                    },
+                ],
+            };
+        } catch (error) {
+            return {
+                isError: true,
+                content: [
+                    {
+                        type: "text",
+                        text: `GitHub directory listing failed: ${
+                            error instanceof Error
+                                ? error.message
+                                : "Unknown error"
+                        }`,
+                    },
+                ],
+            };
+        }
+    },
 );
 
+server.registerTool(
+    "review_github_pr",
+    {
+        title: "Review GitHub Pull Request",
+        description:
+            "Review changed JavaScript files in a GitHub pull request and return a consolidated code review report.",
+        inputSchema: {
+            owner: z.string().min(1).max(100),
+            repo: z.string().min(1).max(100),
+            pullNumber: z.number().int().positive(),
+        },
+    },
+    async ({ owner, repo, pullNumber }) => {
+        try {
+            const report = await reviewGitHubPullRequest({
+                owner,
+                repo,
+                pullNumber,
+            });
+
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(report, null, 2),
+                    },
+                ],
+            };
+        } catch (error) {
+            return {
+                isError: true,
+                content: [
+                    {
+                        type: "text",
+                        text: `GitHub pull request review failed: ${
+                            error instanceof Error
+                                ? error.message
+                                : "Unknown error"
+                        }`,
+                    },
+                ],
+            };
+        }
+    },
+);
 
 // Start the MCP server using stdio
 const transport = new StdioServerTransport();
