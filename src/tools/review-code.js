@@ -68,13 +68,18 @@ function normalizeFinding(finding, category) {
 
     const rule = finding.rule ?? category;
     const line = finding.line ?? null;
-    const identity = finding.name ?? finding.tag ?? finding.column ?? "";
+    const column = finding.column ?? null;
+    const identity = finding.name ?? finding.tag ?? column ?? "";
 
     return {
         ...finding,
         id: `${category}:${rule}:${line ?? "unknown"}:${identity}`,
         category,
+        rule,
+        line,
+        column,
         severity,
+        message: finding.message ?? "Review this finding.",
         recommendation: recommendationFor({ ...finding, category }),
     };
 }

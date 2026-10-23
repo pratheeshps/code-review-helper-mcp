@@ -45,6 +45,7 @@ export async function getPullRequestFiles({
       deletions: file.deletions,
       changes: file.changes,
       patchAvailable: Boolean(file.patch),
+      patch: file.patch ?? null,
     })),
   };
 }
