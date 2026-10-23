@@ -1,58 +1,182 @@
 # Code Review Helper MCP
 
-A lightweight **Model Context Protocol (MCP) server** that exposes JavaScript code-analysis tools to MCP-compatible AI assistants.
-
-Built with JavaScript and Node.js, this project integrates ESLint to identify common code-quality issues and provides tools for finding unfinished work in source code.
+An AI-assisted code review tool built with JavaScript, Node.js, and the Model Context Protocol (MCP). It analyzes JavaScript source code, identifies common issues, finds TODO comments, checks naming conventions, and can review files directly from GitHub repositories.
 
 ## Features
 
-- **MCP tool integration** — expose developer utilities through the Model Context Protocol.
-- **JavaScript code analysis** — detect undefined variables, unused variables, `var` declarations, console statements, debugger statements, `eval()` usage, and loose equality.
-- **TODO scanner** — find `TODO`, `FIXME`, and `HACK` markers in source comments.
-- **Structured findings** — return line numbers, columns, severity, rule IDs, and messages.
-- **Input validation** — validate tool inputs with Zod and enforce source-size limits.
-- **Automated testing** — use Vitest to test analysis logic.
-- **Local execution** — analyze submitted code without executing it or sending it to an external AI API.
+- **Static analysis** — detect common JavaScript issues using ESLint.
+- **TODO detection** — identify `TODO`, `FIXME`, and `HACK` comments using an AST-aware parser.
+- **Naming conventions** — validate `camelCase`, `PascalCase`, and module-level `CONSTANT_CASE`.
+- **Combined code review** — consolidate findings from all checks into a structured report.
+- **GitHub integration** — retrieve repository files and review their source code.
+- **Repository browsing** — list files and directories before selecting a file to review.
+- **Actionable recommendations** — provide suggestions for addressing detected issues.
+- **Automated tests** — validate tool behavior using Vitest.
 
 ## Tech Stack
 
-| Technology | Purpose |
+- Node.js
+- JavaScript (ES modules)
+- Model Context Protocol SDK
+- ESLint
+- Acorn
+- Octokit REST API
+- Zod
+- Vitest
+
+## Available MCP Tools
+
+| Tool | Description |
 |---|---|
-| JavaScript (ES modules) | Application development |
-| Node.js | JavaScript runtime |
-| Model Context Protocol SDK | MCP server and tool registration |
-| ESLint | JavaScript static analysis |
-| Zod | Input validation |
-| Vitest | Automated testing |
-| MCP Inspector | Tool discovery and testing |
+| `hello_mcp` | Verify that the MCP server is responding. |
+| `analyze_code` | Analyze JavaScript source using ESLint rules. |
+| `find_todos` | Find TODO, FIXME, and HACK comments. |
+| `check_naming_conventions` | Check JavaScript naming conventions. |
+| `review_code` | Run all code review checks and return a combined report. |
+| `review_github_file` | Fetch and review a JavaScript file from GitHub. |
+| `list_github_files` | List files and directories in a GitHub repository. |
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    A["MCP-compatible AI client"]
-    B["MCP Inspector"]
-    C["Code Review Helper MCP Server"]
-    D["Zod Input Validation"]
-    E["analyze_code"]
-    F["find_todos"]
-    G["hello_mcp"]
-    H["ESLint Linter API"]
-    I["Structured Findings"]
+    Client[MCP Client / Inspector]
+    Server[MCP Server]
+    Tools[Registered MCP Tools]
+    Analysis[Static Analysis]
+    Todos[TODO Detection]
+    Naming[Naming Checker]
+    GitHub[GitHub API / Octokit]
+    Report[Combined Review Report]
 
-    A <--> C
-    B <--> C
-    C --> D
-    D --> E
-    D --> F
-    C --> G
-    E --> H
-    H --> I
-    F --> I
-    I --> C
+    Client --> Server
+    Server --> Tools
+    Tools --> Analysis
+    Tools --> Todos
+    Tools --> Naming
+    Tools --> GitHub
+    Analysis --> Report
+    Todos --> Report
+    Naming --> Report
+    GitHub --> Report
+    Report --> Server
+    Server --> Client
 ```
 
-The MCP server exposes tools over standard input/output (stdio). The client invokes a tool, the server validates its input, and the corresponding function returns a structured response.
+## Prerequisites
+
+- Node.js and npm
+- Git
+- A GitHub account for accessing your repositories
+- MCP Inspector or another compatible MCP client
+
+## Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/pratheeshps/code-review-helper-mcp.git
+cd code-review-helper-mcp
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+## Configuration
+
+### GitHub access
+
+Public repositories can be accessed without authentication, subject to GitHub API rate limits.
+
+For private repositories, set a GitHub personal access token with the minimum required repository permissions.
+
+macOS/Linux:
+
+```bash
+export GITHUB_TOKEN="your_github_token"
+```
+
+Set this variable in the environment used to launch the MCP server. Never commit tokens or other secrets to Git.
+
+## Running the MCP Server
+
+Start the server using the start script configured in `package.json`. For example, if the script is named `start`:
+
+```bash
+npm start
+```
+
+The server uses the MCP stdio transport. When connecting it to an MCP client, configure the client to launch the server process rather than treating it as a regular HTTP service.
+
+## Testing
+
+Run the complete test suite:
+
+```bash
+npx vitest run
+```
+
+Run ESLint:
+
+```bash
+npx eslint src tests
+```
+
+Run a specific test file:
+
+```bash
+npx vitest run tests/check-naming.test.js
+```
+
+## Example: Review JavaScript Code
+
+Call `review_code` with a source-code argument:
+
+```javascript
+const user_name = "Alex";
+
+// TODO: Validate input
+function Calculate_Total() {
+  var total = 10;
+  console.log(total);
+  return total == null ? 0 : total;
+}
+```
+
+The report can include:
+
+- ESLint findings
+- TODO comment findings
+- Naming convention violations
+- Severity counts
+- Recommendations for resolving issues
+
+## Example: Browse a GitHub Repository
+
+Use `list_github_files` to inspect a repository:
+
+```json
+{
+  "owner": "pratheeshps",
+  "repo": "code-review-helper-mcp",
+  "path": "src/tools"
+}
+```
+
+Use the returned repository-relative path with `review_github_file`:
+
+```json
+{
+  "owner": "pratheeshps",
+  "repo": "code-review-helper-mcp",
+  "path": "src/tools/find-todos.js"
+}
+```
+
+The tool fetches the file and passes its source to the combined review engine.
 
 ## Project Structure
 
@@ -60,237 +184,51 @@ The MCP server exposes tools over standard input/output (stdio). The client invo
 code-review-helper-mcp/
 ├── src/
 │   ├── index.js
-│   ├── tools/
-│   │   ├── analyze-code.js
-│   │   └── find-todos.js
-│   ├── utils/
-│   └── security/
+│   └── tools/
+│       ├── analyze-code.js
+│       ├── find-todos.js
+│       ├── check-naming.js
+│       ├── review-code.js
+│       ├── github-file.js
+│       └── list-github-files.js
 ├── tests/
-│   ├── analyze-code.test.js
-│   └── find-todos.test.js
-├── examples/
-│   └── sample-code.js
 ├── eslint.config.js
-├── .gitignore
 ├── package.json
-├── package-lock.json
 └── README.md
 ```
 
-The structure reflects the intended layout; optional folders may be absent if they do not contain files.
+## Security Considerations
 
-## Prerequisites
+- Never hardcode or commit GitHub access tokens.
+- Use least-privilege GitHub permissions.
+- Validate tool inputs and enforce source-size limits.
+- Do not execute fetched repository code.
+- Treat repository source code and comments as untrusted input.
+- Keep GitHub API errors and authentication details from exposing secrets.
 
-- A supported Node.js LTS release
-- npm
-- Git
-- An MCP-compatible client or MCP Inspector
+## Current Limitations
 
-## Installation
-
-Clone the repository:
-
-```bash
-git clone <YOUR_GITHUB_REPOSITORY_URL>
-cd code-review-helper-mcp
-npm install
-```
-
-Replace `YOUR_USERNAME` with your GitHub username.
-
-## Available MCP Tools
-
-### 1. `hello_mcp`
-
-Verifies that the server can receive a tool call and return a response.
-
-**Input**
-
-```json
-{
-  "name": "Developer"
-}
-```
-
-**Example response**
-
-```text
-Hello, Developer! Your Code Review Helper MCP server is working.
-```
-
-### 2. `analyze_code`
-
-Analyzes a JavaScript source snippet using a predefined ESLint configuration.
-
-**Input**
-
-```json
-{
-  "code": "var total = missingValue; console.log(total);"
-}
-```
-
-**Checks include**
-
-- Undefined variables
-- Unused variables
-- Unexpected `var` declarations
-- Console statements
-- Debugger statements
-- `eval()` usage
-- Loose equality comparisons
-
-**Response structure**
-
-```json
-{
-  "language": "javascript",
-  "linesAnalyzed": 1,
-  "findingCount": 3,
-  "errorCount": 1,
-  "warningCount": 2,
-  "findings": [
-    {
-      "line": 1,
-      "column": 1,
-      "severity": "warning",
-      "rule": "no-var",
-      "message": "Unexpected var, use let or const instead.",
-      "code": "var total = missingValue; console.log(total);"
-    }
-  ],
-  "note": "Analysis uses ESLint rules. Review findings before treating them as confirmed bugs."
-}
-```
-
-The example illustrates the response format. Actual findings depend on the submitted source and enabled rules.
-
-### 3. `find_todos`
-
-Scans source text for `TODO`, `FIXME`, and `HACK` markers.
-
-**Input**
-
-```json
-{
-  "code": "// TODO: add input validation\n// FIXME: handle errors"
-}
-```
-
-**Example response**
-
-```json
-{
-  "linesScanned": 2,
-  "findingCount": 2,
-  "findings": [
-    {
-      "line": 1,
-      "tag": "TODO",
-      "message": "add input validation",
-      "code": "// TODO: add input validation"
-    },
-    {
-      "line": 2,
-      "tag": "FIXME",
-      "message": "handle errors",
-      "code": "// FIXME: handle errors"
-    }
-  ],
-  "note": "Scans single-line comments and single-line block comments. This initial implementation does not parse JavaScript syntax."
-}
-```
-
-The TODO scanner currently uses pattern matching rather than a JavaScript parser. It can produce false positives for comment-like text inside strings and does not fully support multiline block comments.
-
-## Running the Project
-
-### Start with MCP Inspector
-
-From the project root, run:
-
-```bash
-npx @modelcontextprotocol/inspector node src/index.js
-```
-
-Open the local URL printed in the terminal.
-
-1. Connect to the MCP server.
-2. Open the Tools section.
-3. Select **List Tools**.
-4. Choose `hello_mcp`, `analyze_code`, or `find_todos`.
-5. Enter the required arguments and invoke the tool.
-
-The server uses stdio transport, so its protocol messages are communicated through standard input/output.
-
-## Testing
-
-Run the automated test suite:
-
-```bash
-npm test
-```
-
-Run ESLint against the application and tests:
-
-```bash
-npx eslint src tests
-```
-
-The test suite covers the analysis rules, TODO marker detection, line numbers, multiple findings, and edge cases.
-
-## Design Decisions
-
-- **Separation of concerns:** analysis functions live separately from MCP registration and transport.
-- **Deterministic analysis:** the initial implementation uses predefined ESLint rules rather than requiring an LLM.
-- **Input validation:** Zod validates submitted code and limits its size.
-- **No code execution:** submitted source snippets are analyzed as text and are not executed by the analyzer.
-- **Structured responses:** findings are returned as JSON to support integration with MCP-compatible clients.
-
-## Limitations
-
-- The analyzer focuses on JavaScript snippets rather than complete multi-file projects.
-- ESLint findings are not a complete security audit and may require developer judgment.
-- Snippets are analyzed in isolation, so project-wide context is unavailable.
-- The TODO scanner uses regular expressions and can produce false positives.
-- The server currently uses local stdio transport and does not implement remote authentication.
+- GitHub review supports individual JavaScript files, not a complete pull request review workflow.
+- The current source-size limit is 20,000 characters.
+- Naming checks focus on variable, function, and class declarations.
+- JSX and TypeScript require additional parser support.
+- GitHub API rate limits can affect unauthenticated requests.
 
 ## Roadmap
 
-- [x] Create an MCP server using Node.js.
-- [x] Implement a server connectivity tool.
-- [x] Integrate ESLint-based JavaScript analysis.
-- [x] Add automated tests with Vitest.
-- [x] Implement a TODO/FIXME/HACK scanner.
-- [ ] Add naming-convention checks.
-- [ ] Add source-file summaries.
-- [ ] Improve TODO scanning with proper JavaScript parsing.
-- [ ] Implement safe local-file analysis with directory restrictions.
-- [ ] Add GitHub Actions continuous integration.
-- [ ] Explore optional AI-generated code-review explanations.
-
-## Security Considerations
-
-- Submitted source code is treated as untrusted input.
-- The analyzer does not execute submitted JavaScript.
-- Input-size limits reduce exposure to oversized requests but are not a complete denial-of-service defense.
-- Future file-reading tools should restrict access to explicitly authorized directories.
-- Avoid submitting confidential source code to external services without authorization.
-
-## Contributing
-
-Contributions, bug reports, and suggestions are welcome.
-
-1. Fork the repository.
-2. Create a feature branch.
-3. Add or update tests.
-4. Run `npm test` and `npx eslint src tests`.
-5. Submit a pull request with a clear description of the changes.
+- [ ] Review changed files in GitHub pull requests.
+- [ ] Add configurable code review rules.
+- [ ] Improve finding deduplication and severity configuration.
+- [ ] Add more AST-based rules.
+- [ ] Generate review summaries suitable for pull request discussions.
+- [ ] Add CI integration and GitHub Actions support.
 
 ## License
 
-This project is available under the MIT License if the repository includes a matching `LICENSE` file. Ensure the license declaration and file are consistent before publishing.
+Add your chosen open-source license here, such as MIT, if you intend to distribute the project under that license.
 
----
+## Author
 
-**Built as a learning project exploring MCP server development, JavaScript static analysis, developer tooling, and AI-assisted software engineering.**
+**Pratheesh P S**
+
+GitHub: [@pratheeshps](https://github.com/pratheeshps)
