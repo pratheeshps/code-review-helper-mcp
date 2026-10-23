@@ -1,35 +1,54 @@
-const TODO_PATTERN =
-    /(?:\/\/|\/\*)\s*(TODO|FIXME|HACK)\b\s*:?\s*(.*?)(?:\*\/)?$/i;
+
+import { parse } from "acorn";
+
+const TODO_PATTERN = /^\s*\*?\s*(TODO|FIXME|HACK)\b\s*:?\s*(.*)$/i;
 
 export function findTodos(code) {
-    const lines = code.split(/\r?\n/);
-    const findings = [];
+  const lines = code.split(/\r?\n/);
+  const comments = [];
 
-    lines.forEach((line, index) => {
-        // Only inspect text beginning at a comment marker.
-        const commentStart = line.search(/\/\/|\/\*/);
-
-        if (commentStart === -1) return;
-
-        const comment = line.slice(commentStart);
-        const match = comment.match(TODO_PATTERN);
-
-        if (!match) return;
-
-        findings.push({
-            line: index + 1,
-            tag: match[1].toUpperCase(),
-            message: match[2].replace(/\*\/\s*$/, "").trim(),
-            code: comment.trim(),
-        });
+  try {
+    parse(code, {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      locations: true,
+      onComment: comments,
     });
-
+  } catch (error) {
     return {
-        linesScanned: lines.length,
-        findingCount: findings.length,
-        findings,
-        note:
-            "Scans single-line comments and single-line block comments. " +
-            "This initial implementation does not parse JavaScript syntax.",
+      language: "javascript",
+      linesScanned: lines.length,
+      findingCount: 0,
+      findings: [],
+      error: `Unable to parse JavaScript: ${error.message}`,
     };
+  }
+
+  const findings = [];
+
+  for (const comment of comments) {
+    const commentLines = comment.value.split(/\r?\n/);
+
+    commentLines.forEach((commentLine, offset) => {
+      const match = commentLine.match(TODO_PATTERN);
+
+      if (!match) return;
+
+      const lineNumber = comment.loc.start.line + offset;
+
+      findings.push({
+        line: lineNumber,
+        tag: match[1].toUpperCase(),
+        message: match[2].trim(),
+        code: lines[lineNumber - 1].trim(),
+      });
+    });
+  }
+
+  return {
+    language: "javascript",
+    linesScanned: lines.length,
+    findingCount: findings.length,
+    findings,
+  };
 }
