@@ -8,10 +8,12 @@ import { fetchGitHubFile } from "./tools/github-file.js";
 import { reviewCode } from "./tools/review-code.js";
 import { listGitHubFiles } from "./tools/list-github-files.js";
 
-const server = new McpServer({
+var server = new McpServer({
     name: "code-review-helper",
     version: "1.0.0",
 });
+
+console.log(server);
 
 // Tool 1: Verify that the MCP server is working
 server.registerTool(
